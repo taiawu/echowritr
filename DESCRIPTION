@@ -20,4 +20,5 @@ Imports:
     purrr,
     tidyr,
     dplyr,
-    magrittr
+    magrittr,
+    plyr
