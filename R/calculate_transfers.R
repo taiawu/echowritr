@@ -26,8 +26,11 @@ calculate_transfers <- #_______(primary function) Write all transfer steps from 
 
     transfers <-  #__All transfer steps and final conditions__#
       bind_rows(compound_transfers, dilution_transfers) %>%
-      mutate(across(where(is.numeric)), round(2)) # for readability
-  }
+      select(-c(.data$dilution_vol, .data$mother_dil)) %>% # helper column for dilution_transfers
+      mutate(across(where(is.numeric), round, 2)) %>% # for readability
+      select(c(.data$`Destination Well`, .data$`Source Well`, .data$compound, .data$daughter_conc, .data$mother_conc, .data$daughter_final_vol, .data$mother_vol, .data$final_conc, .data$rounded_up, .data$rounded_up_perc   )) # return in reader-friendly order
+
+}
 
 concentrations_to_transfers <- #_______(helper function) Convert concentrations to transfer steps, rounding where necessary_______#
   function(daughter, mother, .echo_drop_nL = 25) { # if there are compounds in the daughter not in the mother
@@ -47,12 +50,12 @@ concentrations_to_transfers <- #_______(helper function) Convert concentrations 
       daughter %>%
       left_join( . , by_compound_m, by = "compound")  %>%
       mutate(mother_dil = (.data$daughter_conc/.data$mother_conc) * ( .data$daughter_final_vol),
-             mother_vol = round_any(.data$mother_dil, .echo_drop_nL, ceiling),
+             mother_vol = plyr::round_any(.data$mother_dil, .echo_drop_nL, ceiling),
              final_conc = (.data$mother_conc*.data$mother_vol)/.data$daughter_final_vol,
              rounded_up = .data$final_conc - .data$daughter_conc,
              rounded_up_perc = if_else(.data$daughter_conc == 0, true = 0, false = round(100*.data$rounded_up/.data$daughter_conc, 1))) %>%
       filter(is.na(.data$mother_vol) == FALSE)
-  }
+}
 
 make_dilutions_plate <-  #_______(helper function) Calculate dilution transfers separately to avoid rounding errors_______#
   function(transfers, mother, .echo_drop_nL = 25, .dilutant_name = "DMSO") {
@@ -81,7 +84,7 @@ make_dilutions_plate <-  #_______(helper function) Calculate dilution transfers 
       concentrations_to_transfers(dil_daughter, dil_mother, .echo_drop_nL) %>%
       distribute_shared(.echo_drop_nL) %>%
       ungroup()
-  }
+}
 
 distribute_shared <- #_______(helper function) Distribute transfers over common source wells_______#
   function(transfers, .echo_drop_nL = 25) {
@@ -101,9 +104,9 @@ distribute_shared <- #_______(helper function) Distribute transfers over common 
       unnest(cols = c(.data$data)) %>%  # this unnesting step adds the divided transfer volume to all mother source wells
       group_by(.data$compound, .data$mother_conc, .data$`Destination Well`, .add = TRUE) %>%
       mutate(mother_vol = if_else(row_number() == 1, .data$mother_vol + .data$extra_transfer, .data$mother_vol)) %>% # add the extra transfer to just one of the wells
-      select(-.data$extra_transfer) %>% # drop unneeded column to match input
+      select(-c(.data$extra_transfer, .data$n_wells, .data$extra_transfer, .data$mother_vol_total)) %>% # drop unneeded column to match input
       ungroup()
-  }
+}
 
 utils::globalVariables("where") # workaround: tidyselect::where() is not an exported function
 # See: https://github.com/r-lib/tidyselect/issues/201#issuecomment-650547846

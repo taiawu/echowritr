@@ -189,7 +189,7 @@ repair_varied <- #_______(helper function - repair_layout) Repairs unacievably h
           )
 
         out <- # remove the columns created by these operations
-          out %>% select(-c(.data$n_conc, .data$max_conc, .data$well_per_conc, .data$most_wells ))
+          out %>% select(-c(.data$n_conc, .data$max_conc, .data$min_conc, .data$well_per_conc, .data$most_wells ))
       }
     } else { # don't mess with error-free mothers
       out <- mother
