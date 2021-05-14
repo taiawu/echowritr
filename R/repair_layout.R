@@ -28,9 +28,10 @@
 #' \item{mother: a mother plate, with any issues repaired as specified}
 #' \item{daughter: a daughter plate, with any issues repaired as specified}}
 #'
-#' @importFrom dplyr distinct group_by group_modify if_else left_join n_distinct pull ungroup
+#' @importFrom dplyr distinct group_by group_modify if_else left_join n_distinct pull ungroup filter
 #' @importFrom utils globalVariables
 #' @importFrom rlang .data
+#' @importFrom glue glue glue_collapse
 #'
 #' @export
 repair_layout <- #_______(primary function) Repair design errors in layouts_______#
@@ -45,8 +46,8 @@ repair_layout <- #_______(primary function) Repair design errors in layouts_____
 
     daughter_rep <- #__Remove impossible cases: missing compounds and conc. in excess of mother__
       daughter %>%
-      repair_missing(mother, ., if_missing = if_missing) %>% # especially useful for typos
-      repair_conc(mother, ., if_impossible = if_impossible) # common mistake
+      repair_missing(mother_rep, ., if_missing = if_missing) %>% # especially useful for typos
+      repair_conc(mother_rep, ., if_impossible = if_impossible) # common mistake
 
     list("mother" = mother_rep,
          "daughter" = daughter_rep)
@@ -67,15 +68,22 @@ repair_missing <- #_______(helper function) Remove orphan compounds from daughte
     mother_cmpds <- mother$compound
 
     if (all(daughter_cmpds %in% mother_cmpds) == FALSE) {
+      missing_cmpd <- # prints in errors and warnings to ease manual repair
+        daughter_cmpds[!daughter_cmpds %in% mother_cmpds]
+
       if (if_missing == "drop") {
+        #____Alert users of the one-shot function____
+        warning(glue::glue("Warning!
+          {glue::glue_collapse(length(unique(missing_cmpd)), sep = ', ')} compounds in daughter not present in the mother.
+          The following compounds were missing, and have been dropped from the daughter:
+          {glue::glue_collapse(unique(missing_cmpd), sep = ', ')}")
+        )
+
         daughter <- # only supported repair is to remove
           daughter %>%
           filter(.data$compound %in% mother_cmpds)
 
       } else if (if_missing == "stop") {
-        missing_cmpd <- # prints in error to ease manual repair
-          daughter_cmpds[!daughter_cmpds %in% mother_cmpds]
-
         abort_bad_argument("Mother layout",
                            must = glue::glue("contain all compounds in the daughter layout.
                                     {glue_collapse(unique(missing_cmpd), sep = ',')}
@@ -124,22 +132,38 @@ repair_conc <- #_______(helper function - repair_layout) Repairs unacievably hig
       group_by(.data$compound) %>%
       mutate(repair = if_else(.data$daughter_conc > .data$mother_conc, true = "repair", false = "ok"))
 
-    #_____User specifies repair method____
-    out <- switch(if_impossible,
-                  "stop" =  if (!all(df$repair == "ok")) { # interfaces with shinyAlerts() to prompt user decision
-                    abort_bad_argument("Each compound",
-                                       must = "be be present in the daughter layout
-                                       at or below its concentration in the mother. ",
-                                       not = NULL)}, # throw an error if repairs are needed
-                  "drop" = df %>% filter(.data$repair == "ok"),
-                  "make_max" = df %>% make_max(),
-                  "scale_down" = df %>% scale_down())
+    if ("repair" %in% df$repair) {
+      to_repair <- # wells / compounds / concentrations to repair
+        df %>%
+        filter(.data$repair == "repair")
 
-    #_____Match input format____
-    out %>%
-      ungroup() %>%
-      select(-c(.data$repair, .data$mother_conc)) %>% # temporary cols created for this function only
-      select(c(.data$`Destination Well`, .data$compound, .data$daughter_conc, .data$daughter_final_vol)) # the expected column order, visually
+      #____Alert users of the one-shot function____
+      warning(glue::glue("Warning!
+          {glue::glue_collapse(length(unique(to_repair$`Destination Well`)))} well(s) in daughter plate are at a concentration in excess of the mother concentration for that compound.
+          These wells are: {glue::glue_collapse(unique(to_repair$`Destination Well`), sep = ', ')}
+          Containing compunds: {glue::glue_collapse(unique(to_repair$compound), sep = ', ')}
+          These issues were repaired with the method: {if_impossible}, specified by the `if_impossible` argument."))
+
+      #_____User specifies repair method____
+      out <- switch(if_impossible,
+                    "stop" =  if (!all(df$repair == "ok")) { # interfaces with shinyAlerts() to prompt user decision
+                      abort_bad_argument("Each compound",
+                                         must = "be be present in the daughter layout
+                                       at or below its concentration in the mother. ",
+                                         not = NULL)}, # throw an error if repairs are needed
+                    "drop" = df %>% filter(.data$repair == "ok"),
+                    "make_max" = df %>% make_max(),
+                    "scale_down" = df %>% scale_down())
+
+      #_____Match input format____
+      out <- out %>%
+        ungroup() %>%
+        select(-c(.data$repair, .data$mother_conc)) %>% # temporary cols created for this function only
+        select(c(.data$`Destination Well`, .data$compound, .data$daughter_conc, .data$daughter_final_vol)) # the expected column order, visually
+    } else {
+      out <- daughter
+    }
+    out
   }
 
 repair_varied <- #_______(helper function - repair_layout) Repairs unacievably high daughter concentrations_______#
@@ -163,6 +187,16 @@ repair_varied <- #_______(helper function - repair_layout) Repairs unacievably h
 
     #_____User specifies repair method____
     if(max(tallied_by_cmpd$n_conc) > 1) {
+      to_repair <- # for more helpful errors and warnings
+        tallied_by_cmpd %>%
+        filter(.data$n_conc > 1)
+
+      #____Alert users of the one-shot function____
+      warning(glue::glue("Warning!
+          {glue::glue_collapse(length(unique(to_repair$compound)))} compound(s) present in multiple concentrations in the mother plate.
+          These compounds are: {glue::glue_collapse(unique(to_repair$compound), sep = ', ')}
+          These issues were repaired with the method: {if_varied}, specified by the `if_varied` argument."))
+
       if (if_varied == "stop") { # interfaces with shinyAlerts() to prompt user decision
         multi_conc <- # prints in error to ease manual repair
           tallied_by_cmpd %>%

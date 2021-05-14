@@ -6,11 +6,14 @@
 #' @param .dilutant_name The name of the compound in the mother to be used for dilutions. Defaults to "DMSO".
 #'
 #' @return A tibble containing all transfer steps, and final conditions representing any necessary rounding
+#'
 #' @importFrom plyr round_any
 #' @importFrom dplyr bind_rows rename row_number
 #' @importFrom tidyr nest unnest
 #' @importFrom purrr map_dbl
+#' @importFrom rlang abort
 #' @importFrom utils globalVariables
+#'
 #' @export
 calculate_transfers <- #_______(primary function) Write all transfer steps from layouts, rounding where necessary_______#
   function(daughter, mother, .echo_drop_nL = 25, .dilutant_name = "DMSO") {
@@ -30,6 +33,51 @@ calculate_transfers <- #_______(primary function) Write all transfer steps from 
       mutate(across(where(is.numeric), round, 2)) %>% # for readability
       select(c(.data$`Destination Well`, .data$`Source Well`, .data$compound, .data$daughter_conc, .data$mother_conc, .data$daughter_final_vol, .data$mother_vol, .data$final_conc, .data$rounded_up, .data$rounded_up_perc   )) # return in reader-friendly order
 
+  }
+
+
+#' Monitor depletion of source plate wells
+#'
+#' @param transfers A tibble containing the final calculated transfers.
+#' @param max_uL_pull The maximum volume that can be pulled from any single mother well. Defaults to 35.
+#'
+#' @return A tibble containing Source Wells, compounds, and total volume pulled from each well
+#'
+#' @importFrom dplyr distinct if_else
+#'
+#' @export
+monitor_source_depletion <- #_______(helper function) Monitor overdrawing of source plate wells, and warn_______#
+  function(transfers, max_uL_pull = 35) {
+    #_____Catch argument errors____
+    if (!is.numeric(max_uL_pull)) {
+      abort_bad_argument("max_uL_pull",
+                         must = "be numeric",
+                         not = typeof(max_uL_pull)) }
+    # catching errors in transfers input would require a different abort and I don't want to write that right now
+
+  #_____Calculate the depletion of each source well____
+    source_depletions <- transfers %>%
+      group_by(.data$`Source Well`) %>%
+      mutate(uL_used = round(sum(.data$mother_vol)/1000, 3)) %>%
+      select(.data$`Source Well`, .data$compound, .data$uL_used) %>%
+      distinct() %>%
+      mutate(over_drawn = if_else(.data$uL_used > max_uL_pull,
+                                  true = "Overdrawn", # helps expressively throw error, for shinyAlerts()
+                                  false = "Ok"))
+
+  #_____Catch source overdraws and warn user____
+    if ("Overdrawn" %in% source_depletions$over_drawn) {
+      overdrawn <- source_depletions %>% filter(.data$over_drawn == "Overdrawn")
+      warning(glue::glue("Warning!
+          The requested transfers will overdraw {glue::glue_collapse(nrow(overdrawn))} well(s) in the mother plate.
+          Specified maximum transfer volume is {max_uL_pull} uL per source well.
+          Well(s) {glue::glue_collapse(overdrawn %>% pull(.data$`Source Well`), sep = ', ')} have the following excessive volumes (uL) transferred:
+          {glue::glue_collapse(overdrawn %>% pull(.data$uL_used), sep = ', ')},
+          corresponding to compounds {glue::glue_collapse(overdrawn %>% pull(.data$compound) %>% unique(), sep = ', ')}.
+          To fix this, add more wells of any over-drawn compounds to your mother plate, or reduce their use in the daughter.")
+      )
+    }
+    source_depletions # return for visualization and/or download
 }
 
 concentrations_to_transfers <- #_______(helper function) Convert concentrations to transfer steps, rounding where necessary_______#
