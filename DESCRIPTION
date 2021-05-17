@@ -22,4 +22,6 @@ Imports:
     dplyr,
     magrittr,
     plyr,
-    readr
+    readr,
+    ggplot2,
+    stringr
