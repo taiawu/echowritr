@@ -77,7 +77,7 @@ monitor_source_depletion <- #_______(helper function) Monitor overdrawing of sou
           To fix this, add more wells of any over-drawn compounds to your mother plate, or reduce their use in the daughter.")
       )
     }
-    source_depletions # return for visualization and/or download
+    source_depletions %>% ungroup()# return for visualization and/or download
 }
 
 concentrations_to_transfers <- #_______(helper function) Convert concentrations to transfer steps, rounding where necessary_______#

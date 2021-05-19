@@ -3,6 +3,7 @@
 export(abort_bad_argument)
 export(add_empty_wells)
 export(calculate_transfers)
+export(get_plotworthy_vars)
 export(make_all_plots)
 export(monitor_source_depletion)
 export(plateview_plot)

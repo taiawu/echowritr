@@ -154,6 +154,15 @@ blank_plate <- # shared between most plots
     )
   }
 
+#' Extract variables worth making plateview plots
+#'
+#' Mostly just here to mask out things like wells, rows, and columns
+#'
+#' @param data layout tibble
+#' @param drop_vars vector of variables not worth plotting. Defaults to: c("Destination Well","Source Well","well","Well","row","column","mother_vol","rounded_up_perc","mother_conc" )
+#'
+#' @return a character vector of variables from the input data maybe work making into a plateview plot.
+#' @export
 get_plotworthy_vars <-
   function(data,
            drop_vars = c("Destination Well",
