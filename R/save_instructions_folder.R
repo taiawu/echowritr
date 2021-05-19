@@ -31,7 +31,7 @@ save_instructions_folder <- function(expnum,
 ) {
 
   exp_header <- make_exp_header(expnum)
-  final_path <- paste0(exp_header, "echo_instructions")
+  final_path <- paste0(save_path, "/", exp_header, "echo_instructions")
 
   if (fs::dir_exists(final_path)) {
     rlang::abort(message = glue::glue("The name {final_path} already exists in this directory! Please provide a unique name."))

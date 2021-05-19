@@ -27,4 +27,5 @@ Imports:
     stringr,
     ggpubr,
     tibble,
-    fs
+    fs,
+    readxl
