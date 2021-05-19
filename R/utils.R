@@ -26,3 +26,22 @@ abort_bad_argument <- function(arg, must, not = NULL) {
                not = not
   )
 }
+
+
+#' Make experiment header
+#'
+#' Not sure what package this really belong in in the end, but its useful here, so adding it here for now.
+#'
+#' @param expnum the experiment number. Defaults to "0000"
+#'
+#' @return a string fo the standard experiment number prefix format: "Exp<expnum>--YYYYMMDD_"
+#'
+#' @export
+make_exp_header <- function(expnum = "0000") {
+  paste0("Exp",
+         expnum,
+         "--",
+         Sys.Date() %>% gsub("-", "", .),
+         "_")
+
+}
