@@ -5,26 +5,29 @@
 \title{Make a Plate-view plot}
 \usage{
 plateview_plot(
-  layout_data,
-  .fill_var,
-  .well_col = "well",
-  col_breaks = 6,
-  .title = "Plate-view plot",
-  .scale_fill = scale_fill_viridis_d()
+  plate_data,
+  fill_col,
+  title_var,
+  shape = 22,
+  size = 4,
+  title_prefix = Sys.Date(),
+  ...
 )
 }
 \arguments{
-\item{layout_data}{a layout tibble (as created by dsfworld::read_plate_layout()), containing columns for plate row (called "row"), plate column (called "column"), and one variable by which the plate will be colored}
+\item{plate_data}{a layout tibble (as created by dsfworld::read_plate_layout()), containing columns for plate row (called "row"), plate column (called "column"), and one variable by which the plate will be colored}
 
-\item{.fill_var}{the column in the input layout by which to color in the wells in the plot}
+\item{fill_col}{the column in the input layout by which to color in the wells in the plot}
 
-\item{.well_col}{the name of the column containing the wells. Defaults to "well".}
+\item{title_var}{the column for which the plot will be named. Shuldn't be an argument in the future; I struggled with tidyeval here so just put it at as different variable... Gets sent to glue::glue(). See make_all_plots function for the origin of this issue, with !!sym(x) working for the fill_col argument, but un-passable to glue.}
 
-\item{col_breaks}{the number of tick marks and lines in the x axis (columns). Defaults to every 6 columns.}
+\item{shape}{the shape of the points used to make the wells. Defaults to 22 (filled square).}
 
-\item{.title}{title for the plot. Defaults to "Plate-view plot"}
+\item{size}{the shape of the points used to make the wells. Defaults to 4.}
 
-\item{.scale_fill}{the color scale to use in the plot. Defaults to scale_color_viridis_d(). Must be updated when plotting continuous variables (e.g. to scale_color_viridis_c())}
+\item{title_prefix}{a prefix to be added to the title. Functionally, this can remain the same while title_var changes, to create consistent names when mapping over many variables. Also hopefully only a temporary argument, to be fixed in later versions.}
+
+\item{...}{to be passed to the ggplot2 aesetheics inside this function. Not actually used inside the function yet... another place to improve things here in the near furture.}
 }
 \value{
 a plate-view plot, with wells colored based on the information on that well in the user-defined variable given in .fill_var.

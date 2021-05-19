@@ -24,4 +24,6 @@ Imports:
     plyr,
     readr,
     ggplot2,
-    stringr
+    stringr,
+    ggpubr,
+    tibble

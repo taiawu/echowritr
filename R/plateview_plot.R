@@ -2,18 +2,19 @@
 #'
 #' Makes a plot that mimics looking down at a well plate. Wells are colored based on a user-defined column from a layout.
 #'
-#' @param layout_data a layout tibble (as created by dsfworld::read_plate_layout()), containing columns for plate row (called "row"), plate column (called "column"), and one variable by which the plate will be colored
-#' @param .fill_var the column in the input layout by which to color in the wells in the plot
-#' @param .well_col the name of the column containing the wells. Defaults to "well".
-#' @param col_breaks the number of tick marks and lines in the x axis (columns). Defaults to 1 (every column).
-#' @param .title title for the plot. Defaults to "Plate-view plot"
-#' @param .scale_fill the color scale to use in the plot. Defaults to scale_color_viridis_d(). Must be updated when plotting continuous variables (e.g. to scale_color_viridis_c())
+#' @param plate_data a layout tibble (as created by dsfworld::read_plate_layout()), containing columns for plate row (called "row"), plate column (called "column"), and one variable by which the plate will be colored
+#' @param fill_col the column in the input layout by which to color in the wells in the plot
+#' @param title_var the column for which the plot will be named. Shuldn't be an argument in the future; I struggled with tidyeval here so just put it at as different variable... Gets sent to glue::glue(). See make_all_plots function for the origin of this issue, with !!sym(x) working for the fill_col argument, but un-passable to glue.
+#' @param shape the shape of the points used to make the wells. Defaults to 22 (filled square).
+#' @param size the shape of the points used to make the wells. Defaults to 4.
+#' @param title_prefix a prefix to be added to the title. Functionally, this can remain the same while title_var changes, to create consistent names when mapping over many variables. Also hopefully only a temporary argument, to be fixed in later versions.
+#' @param ... to be passed to the ggplot2 aesetheics inside this function. Not actually used inside the function yet... another place to improve things here in the near furture.
 #'
 #' @return a plate-view plot, with wells colored based on the information on that well in the user-defined variable given in .fill_var.
 #'
 #' @importFrom magrittr "%>%"
 #' @importFrom dplyr filter rename
-#' @importFrom ggplot2 ggplot aes scale_y_discrete geom_point scale_x_continuous theme labs scale_fill_viridis_d element_rect element_blank element_line
+#' @importFrom ggplot2 ggplot aes scale_y_discrete geom_point scale_x_continuous theme labs scale_fill_viridis_d scale_fill_viridis_c  element_rect element_blank element_line
 #' @importFrom plyr rbind.fill
 #' @importFrom tidyselect any_of
 #' @importFrom tidyr fill
@@ -23,48 +24,35 @@
 #'
 #' @export
 #'
-plateview_plot <- function(layout_data,
-                           .fill_var,
-                           .well_col = "well",
-                           col_breaks = 1,
-                           .title = "Plate-view plot",
-                           .scale_fill = scale_fill_viridis_d()) {
+plateview_plot <-
+  function(plate_data,
+           fill_col,
+           title_var,
+           shape = 22,
+           size = 4,
+           title_prefix = Sys.Date(),
+           ...) {
 
-  layout_data <- layout_data %>%
-    rename(well = .well_col) %>%
-    add_empty_wells( . )
+    plot_title <- glue::glue("{title_prefix} Plate-view plot: {title_var}")
 
-  plate_data <- layout_data %>%
-    filter(is.na( {{ .fill_var }}) == FALSE)
+    fill_scale <- plate_data %>%
+      pull({{ fill_col }})  %>%
+      get_fill_scale( )
 
-  blank_plate <- layout_data %>%
-    ggplot(aes(x = .data$column, y = .data$row)) +
-    scale_y_discrete(limits = rev) +
-    geom_point(color ="#737373",
-               shape = 22,
-               size = 4,
-               alpha = 1)  +
-    scale_x_continuous(breaks = seq(from = 1, to = 24, by = col_breaks)) +
-    theme(aspect.ratio = 16/24,
-          panel.background  = element_rect(color = "#525252", fill = "#525252"),
-          panel.grid.minor = element_blank(),
-          panel.grid.major = element_line(color = "#737373", size = 0.5),
-          legend.position = "right",
-          axis.title = element_blank(),
-          plot.background = element_rect(fill = "transparent",colour = NA),
-    )
+    plate_data
+    ggplot(plate_data, aes(x = .data$column, y = .data$row)) +
+      blank_plate(shape = shape, size = size)+
 
-  plate <- blank_plate +
-    geom_point(data = plate_data,
-               aes(fill = {{ .fill_var }}),
-               color = "#969696",
-               shape = 22,
-               size = 4,
-               alpha = 1)  +
-    .scale_fill +
-    labs(title = .title)
-
-}
+      geom_point(data = plate_data %>%
+                   filter(is.na({{ fill_col }}) == FALSE),
+                 aes(fill = {{ fill_col }}),
+                 color = "#969696",
+                 shape = shape,
+                 size = size) +
+      fill_scale +
+      plate_theme_dark() +
+      labs(title = plot_title)
+  }
 
 
 #' Add empty wells to a partially-filled layout
@@ -79,17 +67,9 @@ plateview_plot <- function(layout_data,
 #'
 #' @return the input layout, with all empty wells appended. These values are NA, unless specified in the .fill_down_cols argument of this function.
 #'
-#' @importFrom magrittr "%>%"
-#' @importFrom dplyr pull tibble filter as_tibble mutate
-#' @importFrom plyr rbind.fill
-#' @importFrom tidyselect any_of
-#' @importFrom tidyr fill
-#' @importFrom stringr str_extract_all str_to_upper
-#' @importFrom purrr as_vector
-#' @importFrom readr parse_number
+#' @importFrom ggpubr ggarrange
 #'
 #' @export
-#'
 add_empty_wells <- function(df,
                             n_wells = "384",
                             .df_well_col = "well",
@@ -120,3 +100,117 @@ add_empty_wells <- function(df,
   df_out
 
 }
+
+
+#' make_all_plots
+#'
+#' Make a plateview plot for a every variable in a provided list.
+#'
+#' @param plate_data the layout tibble from which the plots will be made
+#' @param plot_these a list of column names in plate_data--a plateview plot will be made for each element in this list.
+#'
+#' @return A list, containing (1) "individual_plots", which has each individual variable plotted, stored as a sub-itme under the name of the variable it contains. (2) "all_plots_fig", a ggpubr object containing all of the plotted variables in a single figure, useful for simple batch download. (3) save_width: the recommended widith to save the ggpubr object, set to 12. (4) save_height: the recommended height to save the all_plots_fig, calculated to depend on the number of plots that this figure contains.
+#'
+#' @importFrom tibble tibble as_tibble
+#' @importFrom purrr map
+#' @importFrom rlang sym
+#' @export
+make_all_plots <- function(plate_data, plot_these) {
+
+  plate_plots <- map(plot_these,
+                     function(x) {
+                       plateview_plot(plate_data,
+                                      fill_col = !!sym(x),
+                                      title_var = x) }) %>%
+    set_names(plot_these)
+
+  plate_fig <- plate_plots %>%
+    ggpubr::ggarrange(plotlist = .,
+                      ncol = 1,
+                      align = "v")
+
+  list(individual_plots = plate_plots,
+       all_plots_fig = plate_fig,
+       save_width = 12,
+       save_height = 3*length(plate_plots))
+
+}
+
+## not exported
+blank_plate <- # shared between most plots
+  function(col_breaks = 1,
+           shape = 22,
+           size = 4,
+           alpha = 1,
+           ...) {
+    list(
+      scale_y_discrete(limits = rev), # start with row A
+      geom_point(color ="#737373", # background
+                 shape = shape,
+                 size = size,
+                 alpha = alpha,
+                 ...),
+      scale_x_continuous(breaks = seq(from = 1, to = 24, by = col_breaks))
+    )
+  }
+
+get_plotworthy_vars <-
+  function(data,
+           drop_vars = c("Destination Well",
+                         "Source Well",
+                         "well",
+                         "Well",
+                         "row",
+                         "column",
+                         "mother_vol",
+                         "rounded_up_perc",
+                         "mother_conc" )) {
+    data %>%
+      select(-any_of(drop_vars)) %>%
+      names()
+  }
+
+plate_theme_dark <-
+  function() {
+    theme(
+      aspect.ratio = 16/24,
+
+      panel.background  =
+        element_rect(
+          color = "#525252",
+          fill = "#525252"),
+
+      panel.grid.minor =
+        element_blank(),
+
+      panel.grid.major =
+        element_line(
+          color = "#737373",
+          size = 0.5),
+
+      legend.position = "right",
+
+      axis.title =
+        element_blank(),
+
+      plot.background =
+        element_rect(
+          fill = "transparent",
+          colour = NA),
+    )
+  }
+
+get_fill_scale <- # handle discrete or continuous
+  function(fill_vec) {
+    scale_type <- # if unsure, use discrete
+      if_else(is.numeric(fill_vec),
+              true = "use_numeric",
+              false = "use_discrete",
+              "use_discrete")
+
+    switch(scale_type,
+           "use_numeric" = scale_fill_viridis_c(),
+           "use_discrete" = scale_fill_viridis_d())
+  }
+
+
