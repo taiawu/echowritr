@@ -246,7 +246,7 @@ all_plateview_vars <- function(daughter_raw, transfers, depletion) {
     rename("original_concentrations" = .data$daughter_conc)
 
   transfer_vars <- transfers %>%
-    filter(.data$compound %in% daughter_raw$compound) %>% # not the dilutant
+    filter(.data$transfer_type == "compound_transfer") %>% # not the dilutant
     summarise_rounding() %>% # just final_conc, rounded_up, rounded_up_perc
     select(c(.data$`Destination Well`, .data$original_daughter_conc, .data$rounded_daugher_conc, .data$rounded_up_by, .data$compound)) %>%
     rename("concentrations_after_repairs" = .data$original_daughter_conc)
