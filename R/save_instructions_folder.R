@@ -55,9 +55,8 @@ save_instructions_folder <- function(expnum,
   # in the additional things folder
   supp_path <- paste0(final_path, "/supporting_files/", exp_header)
   write_csv(x = layouts$mother, paste0(supp_path, "repaired_mother_layout.csv"))
-  write_csv(x = layouts$mother, paste0(supp_path, "repaired_daughter_layout.csv"))
+  write_csv(x = layouts$daughter, paste0(supp_path, "repaired_daughter_layout.csv"))
   write_csv(x = transfers, paste0(supp_path, "transfers.csv"))
-  write_csv(x = depletion, paste0(supp_path, "source_depletion.csv"))
   write_csv(x = depletion, paste0(supp_path, "source_depletion.csv"))
   write(paste0("Created using echowritr version ", version_num, ". Happy echoing!"), file = paste0(supp_path,"readme.txt"))
 }
