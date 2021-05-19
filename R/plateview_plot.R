@@ -223,3 +223,47 @@ get_fill_scale <- # handle discrete or continuous
   }
 
 
+#' Create a single tibble summarizing the transfer conditions and any important changes and repairs
+#'
+#' @param daughter_raw the standardized daughter
+#' @param transfers the transfers tibble
+#' @param depletion the depletion tibble
+#'
+#' @return a list, with elements data: a tibble containins pertinent columns from the three input tibbles, and plot_vars, a list of variables from this tibble to be passed to make_all_plots
+#'
+#' @importFrom purrr set_names
+#' @importFrom dplyr rename
+#'
+#' @export
+all_plateview_vars <- function(daughter_raw, transfers, depletion) {
+
+  daughter_plotworthy <- daughter_raw %>% # just compound
+    get_plotworthy_vars()
+
+  daughter_vars <- daughter_raw %>%
+    select(all_of(c("Destination Well", daughter_plotworthy))) %>%
+    rename("original_compound_layout" = .data$compound) %>% #  dplyr
+    rename("original_concentrations" = .data$daughter_conc)
+
+  transfer_vars <- transfers %>%
+    filter(.data$compound %in% daughter_raw$compound) %>% # not the dilutant
+    summarise_rounding() %>% # just final_conc, rounded_up, rounded_up_perc
+    select(c(.data$`Destination Well`, .data$original_daughter_conc, .data$rounded_daugher_conc, .data$rounded_up_by, .data$compound)) %>%
+    rename("concentrations_after_repairs" = .data$original_daughter_conc)
+
+  depletion_vars <- depletion %>%  # just uL used and over_drawn
+    select(c(.data$`Source Well`, .data$uL_used, .data$over_drawn)) %>%
+    set_names(c("well", "uL_used_in_mother", "mother_well_overdrawn")) # purrr
+
+  for_plateview <- left_join(daughter_vars, transfer_vars, by = "Destination Well")  %>%
+    mutate(well = .data$`Destination Well`) %>%
+    select(-.data$`Destination Well`) %>%
+    left_join(. , depletion_vars, by = "well") %>%
+    add_empty_wells()
+
+
+  list(data = for_plateview,
+       plot_vars = for_plateview %>% get_plotworthy_vars())
+}
+
+

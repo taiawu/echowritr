@@ -21,17 +21,19 @@ calculate_transfers <- #_______(primary function) Write all transfer steps from 
     compound_transfers <-  #__compound transfers__
       concentrations_to_transfers(daughter, mother, .echo_drop_nL) %>% # rounds where necessary based on .echo_drop_nL
       mutate(dilution_vol = .data$daughter_final_vol - .data$mother_vol) %>%
-      distribute_shared(.echo_drop_nL)
+      distribute_shared(.echo_drop_nL) %>%
+      mutate(transfer_type = "compound_transfer")
 
     dilution_transfers <- #__calc dilution transfers separately, to respect necessary rounding and desired final volume__
-      make_dilutions_plate(compound_transfers, mother, .echo_drop_nL = .echo_drop_nL, .dilutant_name = .dilutant_name)
+      make_dilutions_plate(compound_transfers, mother, .echo_drop_nL = .echo_drop_nL, .dilutant_name = .dilutant_name)  %>%
+      mutate(transfer_type = "dilution_transfer")
 
 
     transfers <-  #__All transfer steps and final conditions__#
       bind_rows(compound_transfers, dilution_transfers) %>%
       select(-c(.data$dilution_vol, .data$mother_dil)) %>% # helper column for dilution_transfers
       mutate(across(where(is.numeric), round, 2)) %>% # for readability
-      select(c(.data$`Destination Well`, .data$`Source Well`, .data$compound, .data$daughter_conc, .data$mother_conc, .data$daughter_final_vol, .data$mother_vol, .data$final_conc, .data$rounded_up, .data$rounded_up_perc   )) # return in reader-friendly order
+      select(c(.data$`Destination Well`, .data$`Source Well`, .data$compound, .data$daughter_conc, .data$mother_conc, .data$daughter_final_vol, .data$mother_vol, .data$final_conc, .data$rounded_up, .data$rounded_up_perc, .data$transfer_type)) # return in reader-friendly order
 
   }
 
