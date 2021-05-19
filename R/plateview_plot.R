@@ -5,7 +5,7 @@
 #' @param layout_data a layout tibble (as created by dsfworld::read_plate_layout()), containing columns for plate row (called "row"), plate column (called "column"), and one variable by which the plate will be colored
 #' @param .fill_var the column in the input layout by which to color in the wells in the plot
 #' @param .well_col the name of the column containing the wells. Defaults to "well".
-#' @param col_breaks the number of tick marks and lines in the x axis (columns). Defaults to every 6 columns.
+#' @param col_breaks the number of tick marks and lines in the x axis (columns). Defaults to 1 (every column).
 #' @param .title title for the plot. Defaults to "Plate-view plot"
 #' @param .scale_fill the color scale to use in the plot. Defaults to scale_color_viridis_d(). Must be updated when plotting continuous variables (e.g. to scale_color_viridis_c())
 #'
@@ -26,7 +26,7 @@
 plateview_plot <- function(layout_data,
                            .fill_var,
                            .well_col = "well",
-                           col_breaks = 6,
+                           col_breaks = 1,
                            .title = "Plate-view plot",
                            .scale_fill = scale_fill_viridis_d()) {
 
