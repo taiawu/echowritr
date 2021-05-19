@@ -237,12 +237,12 @@ get_fill_scale <- # handle discrete or continuous
 #' @export
 all_plateview_vars <- function(daughter_raw, transfers, depletion) {
 
-  daughter_plotworthy <- daughter_raw %>% # just compound
+  daughter_plotworthy <- daughter_raw %>%
     get_plotworthy_vars()
 
   daughter_vars <- daughter_raw %>%
     select(all_of(c("Destination Well", daughter_plotworthy))) %>%
-    rename("original_compound_layout" = .data$compound) %>% #  dplyr
+    rename("original_compound_layout" = .data$compound) %>%
     rename("original_concentrations" = .data$daughter_conc)
 
   transfer_vars <- transfers %>%
