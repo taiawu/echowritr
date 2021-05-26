@@ -17,11 +17,11 @@ layouts_to_instructions(
   .well_col_mother = "well",
   .compound_col_mother = "compound",
   .concentration_col_mother = "concentration",
-  if_missing = "stop",
-  if_varied = "stop",
-  if_impossible = "stop",
-  echo_drop_vol = 25,
-  max_mother_pull = 35
+  .if_missing = "stop",
+  .if_varied = "stop",
+  .if_impossible = "stop",
+  .echo_drop_vol = 25,
+  .max_mother_pull = 35
 )
 }
 \arguments{
@@ -49,15 +49,15 @@ layouts_to_instructions(
 
 \item{.concentration_col_mother}{passed to standardize_layouts for mother. Defaults to "concentration".}
 
-\item{if_missing}{action to take if compounds in the daughter are not in the mother. Defaults to "stop". Passed to repair_layout.}
+\item{.if_missing}{action to take if compounds in the daughter are not in the mother. Defaults to "stop". Passed to repair_layout.}
 
-\item{if_varied}{action to take if ccompounds are present at multile concentrations in the mother. Defaults to "stop". Passed to repair_layout.}
+\item{.if_varied}{action to take if ccompounds are present at multile concentrations in the mother. Defaults to "stop". Passed to repair_layout.}
 
-\item{if_impossible}{action to take if compounds are present in the daughter at concentrations greater than the mother can provide. Defaults to "stop". Passed to repair_layout.}
+\item{.if_impossible}{action to take if compounds are present in the daughter at concentrations greater than the mother can provide. Defaults to "stop". Passed to repair_layout.}
 
-\item{echo_drop_vol}{the volume of the droplet for the echo instrument to be used. Defaults to 25.}
+\item{.echo_drop_vol}{the volume of the droplet for the echo instrument to be used. Defaults to 25.}
 
-\item{max_mother_pull}{the maximum volume to be pulled from any one well in the mother. If exceeded, this will be noted in the the final plateview plots, and transfer csv. Defaults to 35.}
+\item{.max_mother_pull}{the maximum volume to be pulled from any one well in the mother. If exceeded, this will be noted in the the final plateview plots, and transfer csv. Defaults to 35.}
 }
 \value{
 a list containing all intermediate and final objects. If save_output = TRUE, also saves the echo instrutions in a folder.

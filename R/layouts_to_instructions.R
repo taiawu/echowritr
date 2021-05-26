@@ -12,11 +12,11 @@
 #' @param .well_col_mother passed to standardize_layouts for mother. Defaults to "well".
 #' @param .compound_col_mother passed to standardize_layouts for mother. Defaults to "compound".
 #' @param .concentration_col_mother passed to standardize_layouts for mother. Defaults to "concentration".
-#' @param if_missing action to take if compounds in the daughter are not in the mother. Defaults to "stop". Passed to repair_layout.
-#' @param if_varied action to take if ccompounds are present at multile concentrations in the mother. Defaults to "stop". Passed to repair_layout.
-#' @param if_impossible action to take if compounds are present in the daughter at concentrations greater than the mother can provide. Defaults to "stop". Passed to repair_layout.
-#' @param echo_drop_vol the volume of the droplet for the echo instrument to be used. Defaults to 25.
-#' @param max_mother_pull the maximum volume to be pulled from any one well in the mother. If exceeded, this will be noted in the the final plateview plots, and transfer csv. Defaults to 35.
+#' @param .if_missing action to take if compounds in the daughter are not in the mother. Defaults to "stop". Passed to repair_layout.
+#' @param .if_varied action to take if ccompounds are present at multile concentrations in the mother. Defaults to "stop". Passed to repair_layout.
+#' @param .if_impossible action to take if compounds are present in the daughter at concentrations greater than the mother can provide. Defaults to "stop". Passed to repair_layout.
+#' @param .echo_drop_vol the volume of the droplet for the echo instrument to be used. Defaults to 25.
+#' @param .max_mother_pull the maximum volume to be pulled from any one well in the mother. If exceeded, this will be noted in the the final plateview plots, and transfer csv. Defaults to 35.
 #'
 #' @return a list containing all intermediate and final objects. If save_output = TRUE, also saves the echo instrutions in a folder.
 #'
@@ -34,54 +34,52 @@ layouts_to_instructions <- function(expnum,
                                     .concentration_col_daughter = "concentration",
                                     .volume_col_daughter = "volume",
 
-
                                     .well_col_mother = "well",
                                     .compound_col_mother = "compound",
                                     .concentration_col_mother = "concentration",
 
-                                    if_missing = "stop",
-                                    if_varied = "stop",
-                                    if_impossible = "stop",
+                                    .if_missing = "stop",
+                                    .if_varied = "stop",
+                                    .if_impossible = "stop",
 
-                                    echo_drop_vol = 25,
-                                    max_mother_pull = 35) {
+                                    .echo_drop_vol = 25,
+                                    .max_mother_pull = 35) {
 
   original_daughter <- read_plate_layout(daughter_path)
 
   daughter_raw <- ##---- INTERMEDIATE: standardized daughter layout ---
     original_daughter %>%
-    echowritr::standardize_layout("daughter",
-                                  .well_col = "well",
-                                  .compound_col = "compound",
-                                  .concentration_col = "concentration",
-                                  .volume_col = "volume"
+    standardize_layout("daughter",
+                        .well_col = .well_col_daughter,
+                        .compound_col = .compound_col_daughter,
+                        .concentration_col = .concentration_col_daughter,
+                        .volume_col = .volume_col_daughter
     )
   print("daughter layout read and standardized")
 
   original_mother <-  read_plate_layout(mother_path)
   mother_raw <- ##---- INTERMEDIATE: standardized mother layout ---
     original_mother %>%
-    echowritr::standardize_layout("mother",
-                                  .well_col = "well",
-                                  .compound_col = "compound",
-                                  .concentration_col = "concentration")
-
+    standardize_layout("mother",
+                        .well_col = .well_col_mother,
+                        .compound_col = .compound_col_mother,
+                        .concentration_col = .concentration_col_mother)
   print("mother layout read and standardized")
 
   layouts <- ##---- OUTPUT: the cleaned layouts ---##
-    echowritr::repair_layout(mother_raw,
-                             daughter_raw,
-                             if_missing = if_missing,
-                             if_varied = if_varied,
-                             if_impossible = if_impossible)
-
+    repair_layout(mother_raw,
+                  daughter_raw,
+                  if_missing = .if_missing,
+                  if_varied = .if_varied,
+                  if_impossible = .if_impossible
+                  )
   print("layouts repaired")
 
-  transfers <- calculate_transfers(layouts$daughter, layouts$mother, echo_drop_vol)
+  transfers <- calculate_transfers(layouts$daughter, layouts$mother, .echo_drop_vol)
   print("transfers calculated")
   instructions <- write_instructions_file(transfers)
   print("instructions written")
-  depletion <- monitor_source_depletion(transfers, max_mother_pull)
+  depletion <- monitor_source_depletion(transfers, .max_mother_pull)
   print("source plate depletion calculated")
   for_plotting <- all_plateview_vars(daughter_raw, transfers, depletion)
   all_plots <- make_all_plots(for_plotting$data, for_plotting$plot_vars)
@@ -115,9 +113,6 @@ layouts_to_instructions <- function(expnum,
               layouts_for_plotting = for_plotting,
               all_plots = all_plots,
               final_layouts = final_layouts)
-
-
-
 }
 
 
