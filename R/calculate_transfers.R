@@ -59,7 +59,7 @@ monitor_source_depletion <- #_______(helper function) Monitor overdrawing of sou
                          not = typeof(max_uL_pull)) }
     # catching errors in transfers input would require a different abort and I don't want to write that right now
 
-  #_____Calculate the depletion of each source well____
+    #_____Calculate the depletion of each source well____
     source_depletions <- transfers %>%
       group_by(.data$`Source Well`) %>%
       mutate(uL_used = round(sum(.data$mother_vol)/1000, 3)) %>%
@@ -69,7 +69,7 @@ monitor_source_depletion <- #_______(helper function) Monitor overdrawing of sou
                                   true = "Overdrawn", # helps expressively throw error, for shinyAlerts()
                                   false = "Ok"))
 
-  #_____Catch source overdraws and warn user____
+    #_____Catch source overdraws and warn user____
     if ("Overdrawn" %in% source_depletions$over_drawn) {
       overdrawn <- source_depletions %>% filter(.data$over_drawn == "Overdrawn")
       warning(glue::glue("Warning!
@@ -82,8 +82,21 @@ monitor_source_depletion <- #_______(helper function) Monitor overdrawing of sou
       )
     }
     source_depletions %>% ungroup()# return for visualization and/or download
-}
+  }
 
+#' Concentrations to transfers
+#'
+#' @param daughter repaired daughter layout
+#' @param mother repaired mother layout
+#' @param .echo_drop_nL the droplet size for the echo, in nL. Defaults to 25.
+#'
+#' @return tibble of calcualted transfers, withoutdistribution across source
+#'
+#' @importFrom dplyr group_by left_join mutate if_else filter
+#' @importFrom tidyr nest
+#' @importFrom plyr round_any
+#'
+#' @export
 concentrations_to_transfers <- #_______(helper function) Convert concentrations to transfer steps, rounding where necessary_______#
   function(daughter, mother, .echo_drop_nL = 25) { # if there are compounds in the daughter not in the mother
     #_____Catch argument errors____
@@ -107,8 +120,20 @@ concentrations_to_transfers <- #_______(helper function) Convert concentrations 
              rounded_up = .data$final_conc - .data$daughter_conc,
              rounded_up_perc = if_else(.data$daughter_conc == 0, true = 0, false = round(100*.data$rounded_up/.data$daughter_conc, 1))) %>%
       filter(is.na(.data$mother_vol) == FALSE)
-}
+  }
 
+#' Calculate dilution trasnfers
+#'
+#' @param transfers tibble containing compound transferd
+#' @param mother repaired mother layout
+#' @param .echo_drop_nL droplet size of echo in nL. Defaults to 25.
+#' @param .dilutant_name name of the compound used for diluations. Defaults to "DMSO"
+#'
+#' @return a transfer tibble, specifically for the dilutions.
+#'
+#' @importFrom dplyr filter mutate select distinct ungroup
+#'
+#' @export
 make_dilutions_plate <-  #_______(helper function) Calculate dilution transfers separately to avoid rounding errors_______#
   function(transfers, mother, .echo_drop_nL = 25, .dilutant_name = "DMSO") {
     #_____Catch argument errors____
@@ -136,8 +161,21 @@ make_dilutions_plate <-  #_______(helper function) Calculate dilution transfers 
       concentrations_to_transfers(dil_daughter, dil_mother, .echo_drop_nL) %>%
       distribute_shared(.echo_drop_nL) %>%
       ungroup()
-}
+  }
 
+#' Distribute transfers over multiple mother source wells
+#'
+#'
+#' @param transfers a tibble of transfers
+#' @param .echo_drop_nL droplet size of echo in nL. Defaults to 25.
+#'
+#' @return a modified tibble of transfers, with transfers distributed across common mother wells.
+#'
+#' @importFrom dplyr mutate group_by row_number cur_group_id n select ungroup ungroup
+#' @importFrom purrr map_dbl
+#' @importFrom tidyr unnest
+#'
+#' @export
 distribute_shared <- #_______(helper function) Distribute transfers over common source wells_______#
   function(transfers, .echo_drop_nL = 25) {
     #_____Catch argument errors____
@@ -155,10 +193,12 @@ distribute_shared <- #_______(helper function) Distribute transfers over common 
              mother_vol = .data$per_well) %>%
       unnest(cols = c(.data$data)) %>%  # this unnesting step adds the divided transfer volume to all mother source wells
       group_by(.data$compound, .data$mother_conc, .data$`Destination Well`, .add = TRUE) %>%
-      mutate(mother_vol = if_else(row_number() == 1, .data$mother_vol + .data$extra_transfer, .data$mother_vol)) %>% # add the extra transfer to just one of the wells
+      mutate(mother_vol = if_else(row_number() == cur_group_id()%%n(), .data$mother_vol + .data$extra_transfer, .data$mother_vol)) %>% # add the extra transfer to just one of the wells, cycling through wells
+
+      # mutate(mother_vol = if_else(row_number() == 1, .data$mother_vol + .data$extra_transfer, .data$mother_vol)) %>% # add the extra transfer to just one of the wells
       select(-c(.data$extra_transfer, .data$n_wells, .data$extra_transfer, .data$mother_vol_total)) %>% # drop unneeded column to match input
       ungroup()
-}
+  }
 
 utils::globalVariables("where") # workaround: tidyselect::where() is not an exported function
 # See: https://github.com/r-lib/tidyselect/issues/201#issuecomment-650547846
