@@ -33,7 +33,9 @@ calculate_transfers <- #_______(primary function) Write all transfer steps from 
       bind_rows(compound_transfers, dilution_transfers) %>%
       select(-c(.data$dilution_vol, .data$mother_dil)) %>% # helper column for dilution_transfers
       mutate(across(where(is.numeric), round, 2)) %>% # for readability
+      filter(.data$mother_vol > 0) %>%
       select(c(.data$`Destination Well`, .data$`Source Well`, .data$compound, .data$daughter_conc, .data$mother_conc, .data$daughter_final_vol, .data$mother_vol, .data$final_conc, .data$rounded_up, .data$rounded_up_perc, .data$transfer_type)) # return in reader-friendly order
+
 
   }
 
