@@ -14,7 +14,7 @@
 #'
 #' @importFrom magrittr "%>%"
 #' @importFrom dplyr filter rename
-#' @importFrom ggplot2 ggplot aes scale_y_discrete geom_point scale_x_continuous theme labs scale_fill_viridis_d scale_fill_viridis_c  element_rect element_blank element_line
+#' @importFrom ggplot2 ggplot aes scale_y_discrete geom_point scale_x_continuous theme labs scale_fill_viridis_d scale_fill_viridis_c  element_rect element_blank element_line guides guide_legend
 #' @importFrom plyr rbind.fill
 #' @importFrom tidyselect any_of
 #' @importFrom tidyr fill
@@ -51,7 +51,8 @@ plateview_plot <-
                  size = size) +
       fill_scale +
       plate_theme_dark() +
-      labs(title = plot_title)
+      labs(title = plot_title) +
+      guides(col = guide_legend(nrow = 6))
   }
 
 
@@ -219,7 +220,7 @@ get_fill_scale <- # handle discrete or continuous
 
     switch(scale_type,
            "use_numeric" = scale_fill_viridis_c(),
-           "use_discrete" = scale_fill_viridis_d())
+           "use_discrete" = scale_fill_viridis_d(option = "plasma"))
   }
 
 
