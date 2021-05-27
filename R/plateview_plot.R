@@ -39,8 +39,7 @@ plateview_plot <-
       pull({{ fill_col }})  %>%
       get_fill_scale( )
 
-    plate_data
-    ggplot(plate_data, aes(x = .data$column, y = .data$row)) +
+    p <- ggplot(plate_data, aes(x = .data$column, y = .data$row)) +
       blank_plate(shape = shape, size = size)+
 
       geom_point(data = plate_data %>%
@@ -49,10 +48,16 @@ plateview_plot <-
                  color = "#969696",
                  shape = shape,
                  size = size) +
-      fill_scale +
+      fill_scale$fill_scale +
       plate_theme_dark() +
-      labs(title = plot_title) +
-      guides(col = guide_legend(nrow = 6))
+      labs(title = plot_title)
+
+    if (fill_scale$guide_type == "discrete") {
+      p <- p + guides(fill = guide_legend(nrow = 6))
+    }
+
+    p
+
   }
 
 
@@ -218,10 +223,19 @@ get_fill_scale <- # handle discrete or continuous
               false = "use_discrete",
               "use_discrete")
 
-    switch(scale_type,
+    fill_scale <- switch(scale_type,
            "use_numeric" = scale_fill_viridis_c(),
            "use_discrete" = scale_fill_viridis_d(option = "plasma"))
+
+    guide_type <- switch(scale_type,
+                        "use_numeric" = "numeric",
+                        "use_discrete" = "discrete")
+
+    list("fill_scale" = fill_scale,
+         "guide_type" = guide_type)
   }
+
+
 
 
 #' Create a single tibble summarizing the transfer conditions and any important changes and repairs
